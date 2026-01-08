@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Household Account</title>
+
+    <!-- Security: CSP -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self'; 
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; 
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
+        font-src 'self' https://fonts.gstatic.com; 
+        img-src 'self' data: https://cdn-icons-png.flaticon.com;
+        connect-src 'self';
+    ">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- PWA / Mobile Capable -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5501/5501360.png">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <span class="material-symbols-rounded">account_balance_wallet</span>
+                <h1>Zaim Log</h1>
+            </div>
+
+            <ul class="nav-links">
+                <li class="active" data-view="dashboard">
+                    <span class="material-symbols-rounded">dashboard</span>
+                    <span>ダッシュボード</span>
+                </li>
+                <li data-view="transactions">
+                    <span class="material-symbols-rounded">receipt_long</span>
+                    <span>取引一覧</span>
+                </li>
+                <li data-view="analytics">
+                    <span class="material-symbols-rounded">pie_chart</span>
+                    <span>分析</span>
+                </li>
+            </ul>
+
+            <div class="nav-footer">
+                <button id="import-btn" class="btn btn-outline">
+                    <span class="material-symbols-rounded">upload_file</span>
+                    CSV読込
+                </button>
+                <input type="file" id="csv-input" accept=".csv" style="display: none;">
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <h2 id="page-title">ダッシュボード</h2>
+                    <!-- Dashboard Specific Month Picker -->
+                    <div id="dashboard-controls" style="display: none;">
+                        <input type="month" id="dashboard-month-picker"
+                            style="padding: 0.25rem 0.5rem; font-size: 0.9rem;">
+                    </div>
+                </div>
+                <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+                    <button id="add-btn" class="btn btn-primary">
+                        <span class="material-symbols-rounded">add</span>
+                        新規登録
+                    </button>
+                    <div class="user-profile">
+                        <div class="avatar">TK</div>
+                    </div>
+                </div>
+            </header>
+
+            <div id="view-dashboard" class="view active">
+                <div class="stats-grid">
+                    <div class="stat-card total-balance">
+                        <h3>今月の収支</h3>
+                        <div class="value" id="current-month-balance">¥---</div>
+                        <div class="trend positive">
+                            <span class="material-symbols-rounded">trending_up</span>
+                            <span>先月比 +12%</span>
+                        </div>
+                    </div>
+                    <div class="stat-card income">
+                        <h3>収入</h3>
+                        <div class="value" id="current-month-income">¥---</div>
+                    </div>
+                    <div class="stat-card expense">
+                        <h3>支出</h3>
+                        <div class="value" id="current-month-expense">¥---</div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>カテゴリ別支出</h3>
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                    <div class="chart-card wide">
+                        <h3>収支推移</h3>
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="recent-transactions">
+                    <div class="section-header">
+                        <h3>最近の取引</h3>
+                        <button class="btn btn-text" id="view-all-btn">すべて見る</button>
+                    </div>
+                    <ul class="transaction-list" id="recent-list">
+                        <!-- JS inserted items -->
+                    </ul>
+                </div>
+            </div>
+
+            <div id="view-transactions" class="view">
+                <div class="filters-bar">
+                    <input type="month" id="month-picker">
+                    <input type="text" placeholder="検索..." id="search-input">
+                    <select id="type-filter">
+                        <option value="all">すべて</option>
+                        <option value="支出">支出</option>
+                        <option value="収入">収入</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>日付</th>
+                                <th>内容</th>
+                                <th>カテゴリ</th>
+                                <th>金額</th>
+                                <th>支払い</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-table-body">
+                            <!-- JS inserted rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-analytics" class="view">
+                <div class="construction-message">
+                    <span class="material-symbols-rounded">construction</span>
+                    <p>分析機能は準備中です</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Entry Modal -->
+    <div id="entry-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>新規取引を登録</h3>
+                <button id="close-modal" class="btn-icon"><span class="material-symbols-rounded">close</span></button>
+            </div>
+            <form id="entry-form">
+                <div class="form-group">
+                    <label>日付</label>
+                    <input type="date" id="entry-date" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>収支</label>
+                        <select id="entry-type" required>
+                            <option value="支出">支出</option>
+                            <option value="収入">収入</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>金額</label>
+                        <input type="number" id="entry-amount" placeholder="0" required min="0">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>カテゴリ(大)</label>
+                        <select id="entry-category-med" required>
+                            <option value="食費">食費</option>
+                            <option value="飲料費">飲料費</option>
+                            <option value="酒代">酒代</option>
+                            <option value="日用品費">日用品費</option>
+                            <option value="交通費">交通費</option>
+                            <option value="交際費">交際費</option>
+                            <option value="娯楽費">娯楽費</option>
+                            <option value="教育費">教育費</option>
+                            <option value="習い事">習い事</option>
+                            <option value="書籍">書籍</option>
+                            <option value="住居費">住居費</option>
+                            <option value="水道光熱費">水道光熱費</option>
+                            <option value="通信費">通信費</option>
+                            <option value="保険料">保険料</option>
+                            <option value="社会保険">社会保険</option>
+                            <option value="社会保険料">社会保険料</option>
+                            <option value="税金">税金</option>
+                            <option value="投資">投資</option>
+                            <option value="特別費">特別費</option>
+                            <option value="雑費">雑費</option>
+                            <option value="給与">給与</option>
+                            <option value="賞与">賞与</option>
+                            <option value="手当">手当</option>
+                            <option value="副業収入">副業収入</option>
+                            <option value="副収入">副収入</option>
+                            <option value="臨時収入">臨時収入</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>内容・お店</label>
+                    <input type="text" id="entry-detail" placeholder="例: スーパー, ランチ" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>支払い方法</label>
+                        <input type="text" id="entry-method" list="payment-methods" placeholder="例: 現金">
+                        <datalist id="payment-methods">
+                            <option value="PayPay"></option>
+                            <option value="SBI銀行口座"></option>
+                            <option value="足利銀行口座"></option>
+                            <option value="現金"></option>
+                            <option value="栃木銀行口座"></option>
+                            <option value="ゆうちょ銀行口座"></option>
+                            <option value="楽天銀行"></option>
+                            <option value="楽天カード"></option>
+                            <option value="suica"></option>
+                            <option value="その他"></option>
+                        </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>価値分類</label>
+                        <select id="entry-value-type" required>
+                            <option value="必要消費">必要消費</option>
+                            <option value="選択消費">選択消費</option>
+                            <option value="教育投資">教育投資</option>
+                            <option value="自己投資">自己投資</option>
+                            <option value="投資">投資</option>
+                            <option value="交通費">交通費</option>
+                            <option value="公的支出">公的支出</option>
+                            <option value="リスク対策費">リスク対策費</option>
+                            <option value="浪費">浪費</option>
+                            <option value="収入">収入</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">登録する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+
+</html>
