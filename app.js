@@ -346,10 +346,64 @@ function initDataSync() {
         }
     } else {
         console.log("Firebase config missing or default");
+        updateSyncStatus(false);
     }
 
     // Fallback
     loadFromStorageLocal();
+}
+
+function updateSyncStatus(isConnected) {
+    const iconDiv = document.getElementById('sync-status');
+    if (!iconDiv) return;
+
+    if (isConnected) {
+        iconDiv.innerHTML = '<span class="material-symbols-rounded" style="color:var(--success)">cloud_done</span>';
+        iconDiv.title = "クラウド同期中";
+
+        // Setup upload button logic
+        const uploadBtn = document.getElementById('upload-local-btn');
+        if (uploadBtn) uploadBtn.addEventListener('click', uploadLocalDataToCloud);
+    } else {
+        iconDiv.innerHTML = '<span class="material-symbols-rounded">cloud_off</span>';
+        iconDiv.title = "オフライン (ローカル保存)";
+    }
+}
+
+function checkLocalDataMigration() {
+    // If we have local data but cloud is empty-ish, or just offer it.
+    const saved = localStorage.getItem('zaim_transactions');
+    if (saved) {
+        const localData = JSON.parse(saved);
+        if (localData.length > 0) {
+            const btn = document.getElementById('upload-local-btn');
+            if (btn) btn.style.display = 'inline-flex';
+        }
+    }
+}
+
+async function uploadLocalDataToCloud() {
+    if (!confirm('端末に保存されているデータをクラウドにアップロードしますか？\n（重複するデータがある場合は上書きされる可能性があります）')) return;
+
+    const saved = localStorage.getItem('zaim_transactions');
+    if (!saved) return alert('ローカルデータがありません');
+
+    const localData = JSON.parse(saved);
+    let count = 0;
+
+    try {
+        for (const item of localData) {
+            // Check if exists? Firestore set with merge is safer or just overwrite
+            await db.collection('transactions').doc(item.id).set(item);
+            count++;
+        }
+        alert(`${count} 件のデータをアップロードしました！`);
+        const btn = document.getElementById('upload-local-btn');
+        if (btn) btn.style.display = 'none';
+    } catch (e) {
+        console.error(e);
+        alert('アップロード失敗: ' + e.message);
+    }
 }
 
 function saveTransaction(item) {

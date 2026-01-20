@@ -123,7 +123,14 @@
                             style="padding: 0.25rem 0.5rem; font-size: 0.9rem;">
                     </div>
                 </div>
-                <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+                <div class="header-actions" style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div id="sync-status" style="margin-right:0.5rem; color:var(--text-secondary);" title="未接続">
+                        <span class="material-symbols-rounded">cloud_off</span>
+                    </div>
+                    <button id="upload-local-btn" class="btn btn-outline"
+                        style="border:none; padding: 0.5rem; display:none;" title="ローカルデータをクラウドへアップロード">
+                        <span class="material-symbols-rounded">cloud_upload</span>
+                    </button>
                     <button id="lock-setup-btn" class="btn btn-outline" style="border:none; padding: 0.5rem;"
                         title="パスワード設定">
                         <span class="material-symbols-rounded">lock_open</span>
