@@ -112,6 +112,18 @@ function initModalListeners() {
         document.getElementById('entry-date').valueAsDate = new Date();
     });
 
+    const dayDetailModal = document.getElementById('day-detail-modal');
+    if (dayDetailModal) {
+        dayDetailModal.addEventListener('click', (e) => {
+            if (e.target === dayDetailModal) {
+                dayDetailModal.classList.remove('active');
+            }
+        });
+        document.getElementById('close-day-detail').addEventListener('click', () => {
+            dayDetailModal.classList.remove('active');
+        });
+    }
+
     closeBtn.addEventListener('click', () => {
         modal.classList.remove('active');
     });
@@ -175,7 +187,9 @@ function handleEntrySubmit(e) {
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
-    initModalListeners(); // Add this
+    initModalListeners();
+    initCalendarListeners();
+    initLockSystem(); // Lock System
     loadFromStorage();
     renderDashboard();
 });
@@ -242,13 +256,16 @@ function switchView(viewName) {
     const titles = {
         'dashboard': 'ダッシュボード',
         'transactions': '取引一覧',
-        'analytics': '分析レポート'
+        'analytics': '分析レポート',
+        'calendar': 'カレンダー'
     };
     document.getElementById('page-title').textContent = titles[viewName] || 'Zaim Log';
 
     if (viewName === 'transactions') {
         renderTransactionsTable();
         // Sync filter?
+    } else if (viewName === 'calendar') {
+        renderCalendar();
     }
 }
 
@@ -455,6 +472,301 @@ window.deleteTransaction = function (id) {
 };
 
 
+// --- Calendar Logic ---
+let calCurrentDate = new Date();
+
+function initCalendarListeners() {
+    document.getElementById('cal-prev-btn').addEventListener('click', () => {
+        calCurrentDate.setMonth(calCurrentDate.getMonth() - 1);
+        renderCalendar();
+    });
+
+    document.getElementById('cal-next-btn').addEventListener('click', () => {
+        calCurrentDate.setMonth(calCurrentDate.getMonth() + 1);
+        renderCalendar();
+    });
+}
+
+function renderCalendar() {
+    const year = calCurrentDate.getFullYear();
+    const month = calCurrentDate.getMonth(); // 0-indexed
+
+    // Update Header
+    document.getElementById('cal-current-month').textContent = `${year}年 ${month + 1}月`;
+
+    const grid = document.getElementById('calendar-grid');
+    grid.innerHTML = '';
+
+    // First day of the month (0=Sun, 1=Mon, ...)
+    const firstDay = new Date(year, month, 1).getDay();
+    // Number of days in this month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Data Aggregation
+    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const monthData = transactions.filter(t => t.date.startsWith(monthStr));
+    const dailyData = {}; // day -> { income: 0, expense: 0 }
+
+    monthData.forEach(t => {
+        const d = t.day;
+        if (!dailyData[d]) dailyData[d] = { income: 0, expense: 0 };
+        if (t.type === '収入') dailyData[d].income += t.amount;
+        else if (t.type === '支出') dailyData[d].expense += t.amount;
+    });
+
+    // Padding for previous month
+    for (let i = 0; i < firstDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-cell other-month';
+        grid.appendChild(cell);
+    }
+
+    // Days
+    const today = new Date();
+    const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-cell';
+        if (isCurrentMonth && day === today.getDate()) {
+            cell.classList.add('today');
+        }
+
+        const data = dailyData[day];
+        let totalsHtml = '';
+        if (data) {
+            if (data.income > 0) {
+                totalsHtml += `<div class="day-total inc"><span>¥${data.income.toLocaleString()}</span></div>`;
+            }
+            if (data.expense > 0) {
+                totalsHtml += `<div class="day-total exp"><span>¥${data.expense.toLocaleString()}</span></div>`;
+            }
+        }
+
+        cell.innerHTML = `
+            <div class="date-number">${day}</div>
+            ${totalsHtml}
+        `;
+
+        // Add click listener
+        cell.addEventListener('click', () => openDayDetail(year, month, day));
+
+        grid.appendChild(cell);
+    }
+}
+
+function openDayDetail(year, month, day) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayData = transactions.filter(t => t.date === dateStr);
+
+    // Sort by type (Income first) then amount desc
+    dayData.sort((a, b) => {
+        if (a.type !== b.type) return a.type === '収入' ? -1 : 1;
+        return b.amount - a.amount;
+    });
+
+    // Update Modal Content
+    document.getElementById('day-detail-title').textContent = `${year}年 ${month + 1}月 ${day}日`;
+
+    const list = document.getElementById('day-detail-list');
+    list.innerHTML = '';
+
+    if (dayData.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-secondary);">この日の取引はありません</div>';
+    } else {
+        dayData.forEach(t => {
+            const li = document.createElement('div');
+            li.className = 'transaction-item'; // Reuse existing class
+
+            const isExpense = t.type === '支出';
+            const sign = isExpense ? '-' : '+';
+            const amountClass = isExpense ? 'expense' : 'income';
+            const icon = getCategoryIcon(t.category_med);
+
+            li.innerHTML = `
+                <div class="t-left">
+                    <div class="t-icon">${icon}</div>
+                    <div class="t-info">
+                        <h4>${escapeHTML(t.detail || t.category_med)}</h4>
+                        <span>${escapeHTML(t.category_sml || t.type)} • ${escapeHTML(t.payee || '')}</span>
+                    </div>
+                </div>
+                <div class="t-amount ${amountClass}">
+                    ${sign}¥${t.amount.toLocaleString()}
+                </div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    // Show Modal
+    const modal = document.getElementById('day-detail-modal');
+    modal.classList.add('active');
+}
+
+
+// --- Lock System Logic ---
+let pinCode = '';
+let isSettingUp = false;
+let tempPin = '';
+
+function initLockSystem() {
+    const savedPin = localStorage.getItem('zaim_pin');
+    const lockScreen = document.getElementById('lock-screen');
+    const lockBtn = document.getElementById('lock-setup-btn');
+    const pinInput = document.getElementById('pin-input');
+
+    // UI Update for Button
+    updateLockButtonUI();
+
+    // Check if locked
+    if (savedPin) {
+        // Enforce lock on load
+        lockScreen.style.display = 'flex';
+        resetPinState();
+    }
+
+    // Keypad Logic
+    document.querySelectorAll('.key').forEach(key => {
+        key.addEventListener('click', () => {
+            const num = key.dataset.num;
+            if (num !== undefined) addPinDigit(num);
+        });
+    });
+
+    document.getElementById('key-delete').addEventListener('click', removePinDigit);
+
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+        if (lockScreen.style.display === 'none') return;
+        if (e.key >= '0' && e.key <= '9') addPinDigit(e.key);
+        if (e.key === 'Backspace') removePinDigit();
+    });
+
+    // Setup Button
+    lockBtn.addEventListener('click', () => {
+        if (localStorage.getItem('zaim_pin')) {
+            // Already set -> Ask to remove or Lock?
+            // For simplicity: Click to Lock manually
+            lockScreen.style.display = 'flex';
+            resetPinState();
+        } else {
+            // Start Setup
+            startPinSetup();
+        }
+    });
+}
+
+function updateLockButtonUI() {
+    const savedPin = localStorage.getItem('zaim_pin');
+    const lockBtn = document.getElementById('lock-setup-btn');
+    const icon = lockBtn.querySelector('span');
+    if (savedPin) {
+        icon.textContent = 'lock';
+        lockBtn.title = 'アプリをロック';
+    } else {
+        icon.textContent = 'lock_open';
+        lockBtn.title = 'パスワード設定';
+    }
+}
+
+function startPinSetup() {
+    isSettingUp = true;
+    tempPin = '';
+    const lockScreen = document.getElementById('lock-screen');
+    lockScreen.style.display = 'flex';
+    document.getElementById('lock-title').textContent = 'パスワード設定';
+    document.getElementById('lock-message').textContent = '新しいPINコード(4桁)を入力';
+    resetPinState();
+}
+
+function addPinDigit(digit) {
+    if (pinCode.length >= 4) return;
+
+    pinCode += digit;
+    updatePinDisplay();
+
+    if (pinCode.length === 4) {
+        setTimeout(handlePinComplete, 100);
+    }
+}
+
+function removePinDigit() {
+    if (pinCode.length > 0) {
+        pinCode = pinCode.slice(0, -1);
+        updatePinDisplay();
+    }
+}
+
+function updatePinDisplay() {
+    const dots = document.querySelectorAll('.pin-dot');
+    dots.forEach((dot, index) => {
+        if (index < pinCode.length) {
+            dot.classList.add('filled');
+        } else {
+            dot.classList.remove('filled');
+        }
+        dot.classList.remove('error');
+    });
+}
+
+function resetPinState() {
+    pinCode = '';
+    updatePinDisplay();
+}
+
+function handlePinComplete() {
+    const savedPin = localStorage.getItem('zaim_pin');
+    const title = document.getElementById('lock-title');
+    const msg = document.getElementById('lock-message');
+
+    if (isSettingUp) {
+        // Setup Mode
+        if (!tempPin) {
+            // First entry done, ask confirm
+            tempPin = pinCode;
+            resetPinState();
+            msg.textContent = '確認のためもう一度入力';
+        } else {
+            // Confirmation
+            if (pinCode === tempPin) {
+                // Success
+                localStorage.setItem('zaim_pin', pinCode);
+                alert('パスワードを設定しました');
+                document.getElementById('lock-screen').style.display = 'none';
+                isSettingUp = false;
+                tempPin = '';
+                updateLockButtonUI();
+            } else {
+                // Mismatch
+                showError('パスワードが一致しません');
+                tempPin = '';
+                msg.textContent = '新しいPINコード(4桁)を入力';
+            }
+        }
+    } else {
+        // Unlock Mode
+        if (pinCode === savedPin) {
+            // Success
+            document.getElementById('lock-screen').style.display = 'none';
+        } else {
+            // Fail
+            showError();
+        }
+    }
+}
+
+function showError(text) {
+    const dots = document.querySelectorAll('.pin-dot');
+    dots.forEach(dot => dot.classList.add('error'));
+
+    // Shake animation effect could go here
+    setTimeout(() => {
+        resetPinState();
+    }, 400);
+}
+
+
 // --- Helpers ---
 // Security Helper
 function escapeHTML(str) {
@@ -546,4 +858,17 @@ function getCategoryIcon(category) {
         'その他': 'more_horiz'
     };
     return `<span class="material-symbols-rounded">${map[category] || 'payments'}</span>`;
+}
+
+// --- Service Worker Registration ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(registration => {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(err => {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+    });
 }

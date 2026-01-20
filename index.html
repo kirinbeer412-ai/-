@@ -42,6 +42,40 @@
 </head>
 
 <body>
+    <!-- Lock Screen -->
+    <div id="lock-screen" class="lock-screen" style="display: none;">
+        <div class="lock-content">
+            <span class="material-symbols-rounded lock-icon">lock</span>
+            <h2 id="lock-title">ロック解除</h2>
+            <p id="lock-message">PINコードを入力してください</p>
+            <div class="pin-display">
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+            </div>
+            <!-- Hidden Input for simpler handling -->
+            <input type="password" id="pin-input" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                style="opacity: 0; position: absolute; pointer-events: none;">
+
+            <div class="keypad">
+                <button class="key" data-num="1">1</button>
+                <button class="key" data-num="2">2</button>
+                <button class="key" data-num="3">3</button>
+                <button class="key" data-num="4">4</button>
+                <button class="key" data-num="5">5</button>
+                <button class="key" data-num="6">6</button>
+                <button class="key" data-num="7">7</button>
+                <button class="key" data-num="8">8</button>
+                <button class="key" data-num="9">9</button>
+                <button class="key empty"></button>
+                <button class="key" data-num="0">0</button>
+                <button class="key delete" id="key-delete"><span
+                        class="material-symbols-rounded">backspace</span></button>
+            </div>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <nav class="sidebar">
@@ -54,6 +88,10 @@
                 <li class="active" data-view="dashboard">
                     <span class="material-symbols-rounded">dashboard</span>
                     <span>ダッシュボード</span>
+                </li>
+                <li data-view="calendar">
+                    <span class="material-symbols-rounded">calendar_month</span>
+                    <span>カレンダー</span>
                 </li>
                 <li data-view="transactions">
                     <span class="material-symbols-rounded">receipt_long</span>
@@ -86,6 +124,10 @@
                     </div>
                 </div>
                 <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+                    <button id="lock-setup-btn" class="btn btn-outline" style="border:none; padding: 0.5rem;"
+                        title="パスワード設定">
+                        <span class="material-symbols-rounded">lock_open</span>
+                    </button>
                     <button id="add-btn" class="btn btn-primary">
                         <span class="material-symbols-rounded">add</span>
                         新規登録
@@ -135,6 +177,28 @@
                     <ul class="transaction-list" id="recent-list">
                         <!-- JS inserted items -->
                     </ul>
+                </div>
+            </div>
+
+            <div id="view-calendar" class="view">
+                <div class="calendar-controls">
+                    <button id="cal-prev-btn" class="btn-icon"><span
+                            class="material-symbols-rounded">chevron_left</span></button>
+                    <h3 id="cal-current-month">2026年 1月</h3>
+                    <button id="cal-next-btn" class="btn-icon"><span
+                            class="material-symbols-rounded">chevron_right</span></button>
+                </div>
+                <div class="calendar-grid-header">
+                    <div>日</div>
+                    <div>月</div>
+                    <div>火</div>
+                    <div>水</div>
+                    <div>木</div>
+                    <div>金</div>
+                    <div>土</div>
+                </div>
+                <div class="calendar-grid" id="calendar-grid">
+                    <!-- JS inserted cells -->
                 </div>
             </div>
 
@@ -282,6 +346,24 @@
                     <button type="submit" class="btn btn-primary">登録する</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Day Detail Modal -->
+    <div id="day-detail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="day-detail-title">2026年 1月 1日</h3>
+                <button id="close-day-detail" class="btn-icon"><span
+                        class="material-symbols-rounded">close</span></button>
+            </div>
+            <div id="day-detail-list" class="transaction-list">
+                <!-- JS inserted items -->
+            </div>
+            <div style="margin-top: 1.5rem; text-align: right;">
+                <button type="button" class="btn btn-primary"
+                    onclick="document.getElementById('day-detail-modal').classList.remove('active')">閉じる</button>
+            </div>
         </div>
     </div>
 

@@ -235,6 +235,14 @@ body {
     font-family: var(--font-heading);
 }
 
+.stat-card.income .value {
+    color: #3b82f6;
+}
+
+.stat-card.expense .value {
+    color: var(--danger);
+}
+
 .trend {
     display: flex;
     align-items: center;
@@ -340,11 +348,11 @@ body {
 }
 
 .t-amount.income {
-    color: var(--success);
+    color: #3b82f6;
 }
 
 .t-amount.expense {
-    color: var(--text-primary);
+    color: var(--danger);
 }
 
 /* Table View */
@@ -539,6 +547,8 @@ body {
     padding: 2rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .modal-header {
@@ -586,7 +596,8 @@ select {
     color: var(--text-primary);
     padding: 0.75rem;
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 16px;
+    /* Prevent iOS zoom */
     outline: none;
     transition: border-color 0.2s;
 }
@@ -605,4 +616,231 @@ select:focus {
 .form-actions button {
     width: 100%;
     justify-content: center;
+}
+
+/* Calendar View */
+.calendar-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.calendar-controls h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    min-width: 150px;
+    text-align: center;
+}
+
+.calendar-grid-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 0.5rem;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background-color: rgba(255, 255, 255, 0.1);
+    /* Border effect */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+}
+
+.calendar-cell {
+    background-color: var(--bg-secondary);
+    min-height: 100px;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.calendar-cell:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.calendar-cell.today {
+    background-color: rgba(99, 102, 241, 0.1);
+    /* Accent tint */
+}
+
+.calendar-cell.other-month {
+    opacity: 0.5;
+    background-color: var(--bg-primary);
+}
+
+.date-number {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.calendar-cell.today .date-number {
+    background-color: var(--accent-primary);
+    color: white;
+}
+
+/* Day Totals */
+.day-total {
+    font-size: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.day-total.exp {
+    color: var(--danger);
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.day-total.inc {
+    color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Mobile Calendar Overrides */
+@media (max-width: 768px) {
+    .calendar-cell {
+        min-height: 60px;
+        padding: 0.25rem;
+        font-size: 0.75rem;
+    }
+
+    .date-number {
+        width: 20px;
+        height: 20px;
+        font-size: 0.8rem;
+    }
+
+    .day-total {
+        font-size: 0.65rem;
+        flex-direction: column;
+        gap: 0;
+        align-items: flex-start;
+    }
+}/* Lock Screen */
+.lock-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-primary);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.lock-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 320px;
+}
+
+.lock-icon {
+    font-size: 3rem;
+    color: var(--accent-primary);
+    margin-bottom: 0.5rem;
+}
+
+.lock-screen h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.lock-screen p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* PIN Dots */
+.pin-display {
+    display: flex;
+    gap: 1.5rem;
+    margin: 1rem 0 2rem;
+}
+
+.pin-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.pin-dot.filled {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.pin-dot.error {
+    border-color: var(--danger);
+    background-color: var(--danger);
+}
+
+/* Keypad */
+.keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.key {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 500;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    margin: 0 auto;
+}
+
+.key:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.key:active {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.key.empty {
+    border: none;
+    pointer-events: none;
+}
+
+.key.delete {
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.25rem;
 }
