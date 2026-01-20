@@ -305,7 +305,8 @@ async function handleFileSelect(e) {
 function initDataSync() {
     // Debug checks
     if (window.firebaseError || window.firestoreError) {
-        debugLog("Error: Network Blocked/Failed to Load SDK");
+        debugLog("Error: Network Blocked. Please disable AdBlocker.");
+        alert("エラー：Firebaseへの接続がブロックされました。\n広告ブロック（AdBlock等）をOFFにするか、別の回線をお試しください。");
         updateSyncStatus(false);
         loadFromStorageLocal();
         return;
