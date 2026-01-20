@@ -1,6 +1,8 @@
 // --- Firebase Configuration ---
 // TO USER: Replace the object below with your actual Firebase config from the console.
-const firebaseConfig = {
+// --- Firebase Configuration ---
+// TO USER: Replace the object below with your actual Firebase config from the console.
+window.firebaseConfig = {
     apiKey: "AIzaSyChDOD3iTGejV55hYJgn4pNzRKJjYCedqY",
     authDomain: "kakeibo-5738d.firebaseapp.com",
     projectId: "kakeibo-5738d",

@@ -303,58 +303,75 @@ async function handleFileSelect(e) {
 }
 
 function initDataSync() {
-    // Check if Firebase is available
-    if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
-        try {
-            debugLog("Init Firebase...");
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            debugLog("Firestore Init OK");
-
-            // Real-time listener
-            db.collection('transactions').onSnapshot((snapshot) => {
-                debugLog("Snapshot: " + snapshot.size);
-                // Only alert on first load to confirm connection
-                if (!document.body.dataset.syncConfirmed) {
-                    console.log("Sync connected");
-                    document.body.dataset.syncConfirmed = "true";
-                    updateSyncStatus(true);
-                    checkLocalDataMigration();
-                }
-
-                transactions = [];
-                snapshot.forEach((doc) => {
-                    transactions.push(doc.data());
-                });
-
-                // Sort
-                transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                // Update UI
-                filterTransactions();
-                renderDashboard();
-                if (document.getElementById('view-calendar').classList.contains('active')) {
-                    renderCalendar();
-                }
-            }, (error) => {
-                console.error("Sync Error:", error);
-                debugLog("Sync Error: " + error.message);
-                alert("データの同期に失敗しました: " + error.message);
-            });
-            return; // Exit, don't load local
-        } catch (e) {
-            console.error("Firebase init failed:", e);
-            debugLog("Init Failed: " + e.message);
-            alert("Firebase初期化エラー: " + e.message);
-        }
-    } else {
-        console.log("Firebase config missing or default");
-        debugLog("Firebase Config Missing");
+    // Debug checks
+    if (typeof firebase === 'undefined') {
+        debugLog("Error: Firebase SDK Missing");
         updateSyncStatus(false);
+        loadFromStorageLocal();
+        return;
+    }
+    if (typeof window.firebaseConfig === 'undefined') {
+        debugLog("Error: firebaseConfig Missing");
+        updateSyncStatus(false);
+        loadFromStorageLocal();
+        return;
+    }
+    if (window.firebaseConfig.apiKey === "YOUR_API_KEY") {
+        debugLog("Error: API Key is default");
+        updateSyncStatus(false);
+        loadFromStorageLocal();
+        return;
     }
 
-    // Fallback
-    loadFromStorageLocal();
+    try {
+        debugLog("Init Firebase...");
+        if (!firebase.apps.length) {
+            firebase.initializeApp(window.firebaseConfig);
+        }
+        db = firebase.firestore();
+        debugLog("Firestore Init OK");
+
+        // Real-time listener
+        db.collection('transactions').onSnapshot((snapshot) => {
+            debugLog("Snapshot: " + snapshot.size + " docs");
+            // Only alert on first load to confirm connection
+            if (!document.body.dataset.syncConfirmed) {
+                console.log("Sync connected");
+                document.body.dataset.syncConfirmed = "true";
+                updateSyncStatus(true);
+                checkLocalDataMigration();
+            }
+
+            transactions = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // Ensure ID is present
+                if (!data.id) data.id = doc.id;
+                transactions.push(data);
+            });
+
+            // Sort
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            // Update UI
+            filterTransactions();
+            renderDashboard();
+            if (document.getElementById('view-calendar').classList.contains('active')) {
+                renderCalendar();
+            }
+        }, (error) => {
+            console.error("Sync Error:", error);
+            debugLog("Sync Err: " + error.code);
+            // alert("データの同期に失敗しました: " + error.message);
+            updateSyncStatus(false);
+        });
+        return; // Exit, don't load local
+    } catch (e) {
+        console.error("Firebase init failed:", e);
+        debugLog("Init Exception: " + e.message);
+        // alert("Firebase初期化エラー: " + e.message);
+        loadFromStorageLocal();
+    }
 }
 
 // Temporary Debug Logger for User
