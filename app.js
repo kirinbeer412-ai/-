@@ -444,7 +444,8 @@ async function uploadLocalDataToCloud() {
         if (btn) btn.style.display = 'none';
     } catch (e) {
         console.error(e);
-        alert('アップロード失敗: ' + e.message);
+        // Show exact error
+        alert('アップロード失敗: ' + e.message + ' (' + e.code + ')');
     }
 }
 
@@ -453,7 +454,8 @@ function saveTransaction(item) {
         db.collection('transactions').doc(item.id).set(item)
             .catch(err => {
                 console.error("Error adding document: ", err);
-                alert("保存に失敗しました");
+                // Detailed alert
+                alert("保存に失敗しました: " + err.message + "\nCode: " + err.code);
             });
     } else {
         transactions.unshift(item);
