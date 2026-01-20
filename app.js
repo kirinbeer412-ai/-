@@ -304,8 +304,14 @@ async function handleFileSelect(e) {
 
 function initDataSync() {
     // Debug checks
+    if (window.firebaseError || window.firestoreError) {
+        debugLog("Error: Network Blocked/Failed to Load SDK");
+        updateSyncStatus(false);
+        loadFromStorageLocal();
+        return;
+    }
     if (typeof firebase === 'undefined') {
-        debugLog("Error: Firebase SDK Missing");
+        debugLog("Error: Firebase SDK Missing (Global Undefined)");
         updateSyncStatus(false);
         loadFromStorageLocal();
         return;
