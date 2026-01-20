@@ -317,7 +317,8 @@ function initDataSync() {
                 if (!document.body.dataset.syncConfirmed) {
                     console.log("Sync connected");
                     document.body.dataset.syncConfirmed = "true";
-                    // Optional: Visual indicator could go here
+                    updateSyncStatus(true);
+                    checkLocalDataMigration();
                 }
 
                 transactions = [];
