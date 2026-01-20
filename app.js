@@ -92,6 +92,7 @@ function splitCSVLine(line) {
 // State
 let transactions = [];
 let filteredTransactions = [];
+let db = null; // Firestore instance
 
 // DOM Elements
 const views = document.querySelectorAll('.view');
@@ -170,8 +171,8 @@ function handleEntrySubmit(e) {
     };
 
     // Add to state
-    transactions.unshift(newItem); // Add to top
-    saveToStorage();
+    // transactions.unshift(newItem); // Removed: Real-time listener handles this
+    saveTransaction(newItem);
 
     // Refresh UI
     filterTransactions(); // Will resort
@@ -190,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initModalListeners();
     initCalendarListeners();
     initLockSystem(); // Lock System
-    loadFromStorage();
+    initDataSync(); // Replaces loadFromStorage
     renderDashboard();
 });
 
@@ -276,31 +277,113 @@ async function handleFileSelect(e) {
 
     try {
         const loadedData = await loadCSV(file);
-        transactions = loadedData;
-        saveToStorage();
-        alert(`${transactions.length} 件のデータを読み込みました`);
 
-        // Refresh UI
-        filterTransactions();
-        renderDashboard();
-        renderTransactionsTable();
+        // Batch upload or single upload?
+        // For simplicity: Add one by one (Firestore batch limit is 500)
+        let count = 0;
+        if (db && confirm('CSVデータをクラウドに同期しますか？\n「キャンセル」を押すとローカルのみに保存されます（非推奨）')) {
+            for (const item of loadedData) {
+                await db.collection('transactions').doc(item.id).set(item);
+                count++;
+            }
+            alert(`${count} 件のデータをクラウドに保存しました`);
+        } else {
+            // Local Fallback
+            transactions = [...loadedData, ...transactions];
+            saveToStorageLocal(); // Force local
+            alert(`${loadedData.length} 件のデータを読み込みました(ローカルのみ)`);
+            filterTransactions();
+            renderDashboard();
+        }
+        renderTransactionsTable(); // Ensure table is rendered after data is processed
     } catch (err) {
         console.error(err);
         alert('CSVの読み込みに失敗しました: ' + err.message);
     }
 }
 
-function saveToStorage() {
+function initDataSync() {
+    // Check if Firebase is available
+    if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            console.log("Firebase initialized");
+
+            // Real-time listener
+            db.collection('transactions').onSnapshot((snapshot) => {
+                transactions = [];
+                snapshot.forEach((doc) => {
+                    transactions.push(doc.data());
+                });
+
+                // Sort
+                transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                // Update UI
+                filterTransactions();
+                renderDashboard();
+                if (document.getElementById('view-calendar').classList.contains('active')) {
+                    renderCalendar();
+                }
+            });
+            return; // Exit, don't load local
+        } catch (e) {
+            console.error("Firebase init failed:", e);
+        }
+    }
+
+    // Fallback
+    loadFromStorageLocal();
+}
+
+function saveTransaction(item) {
+    if (db) {
+        db.collection('transactions').doc(item.id).set(item)
+            .catch(err => {
+                console.error("Error adding document: ", err);
+                alert("保存に失敗しました");
+            });
+    } else {
+        transactions.unshift(item);
+        saveToStorageLocal();
+        // Manual refresh needed for local mode as no listener
+        filterTransactions();
+        renderDashboard();
+    }
+}
+
+function deleteTransaction(id) {
+    if (!confirm('この取引を削除しますか？')) return;
+
+    if (db) {
+        db.collection('transactions').doc(id).delete()
+            .catch(err => {
+                console.error("Error removing document: ", err);
+            });
+    } else {
+        transactions = transactions.filter(t => t.id !== id);
+        saveToStorageLocal();
+        filterTransactions();
+        renderDashboard();
+    }
+}
+
+// Renamed old functions to Local specific
+function saveToStorageLocal() {
     localStorage.setItem('zaim_transactions', JSON.stringify(transactions));
 }
 
-function loadFromStorage() {
+function loadFromStorageLocal() {
     const saved = localStorage.getItem('zaim_transactions');
     if (saved) {
         transactions = JSON.parse(saved);
-        filterTransactions(); // Initialize filtered list
+        filterTransactions();
     }
 }
+
+// Global expose
+window.deleteTransaction = deleteTransaction;
 
 // --- Rendering Logic ---
 
@@ -459,17 +542,8 @@ function renderTransactionsTable() {
     });
 }
 
-// Global expose for onclick
-window.deleteTransaction = function (id) {
-    if (!confirm('この取引を削除しますか？')) return;
-
-    transactions = transactions.filter(t => t.id !== id);
-    saveToStorage();
-
-    // Refresh Logic
-    filterTransactions();
-    renderDashboard();
-};
+// Global expose for onclick -> Moved up
+// window.deleteTransaction = function (id) ...
 
 
 // --- Calendar Logic ---
