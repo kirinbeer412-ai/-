@@ -306,13 +306,14 @@ function initDataSync() {
     // Check if Firebase is available
     if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
         try {
+            debugLog("Init Firebase...");
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
-            console.log("Firebase initialized");
+            debugLog("Firestore Init OK");
 
             // Real-time listener
             db.collection('transactions').onSnapshot((snapshot) => {
-                console.log("Snapshot received!", snapshot.size); // DEBUG
+                debugLog("Snapshot: " + snapshot.size);
                 // Only alert on first load to confirm connection
                 if (!document.body.dataset.syncConfirmed) {
                     console.log("Sync connected");
@@ -337,20 +338,37 @@ function initDataSync() {
                 }
             }, (error) => {
                 console.error("Sync Error:", error);
+                debugLog("Sync Error: " + error.message);
                 alert("データの同期に失敗しました: " + error.message);
             });
             return; // Exit, don't load local
         } catch (e) {
             console.error("Firebase init failed:", e);
+            debugLog("Init Failed: " + e.message);
             alert("Firebase初期化エラー: " + e.message);
         }
     } else {
         console.log("Firebase config missing or default");
+        debugLog("Firebase Config Missing");
         updateSyncStatus(false);
     }
 
     // Fallback
     loadFromStorageLocal();
+}
+
+// Temporary Debug Logger for User
+function debugLog(msg) {
+    console.log(msg);
+    // Create debug element if not exists
+    let debugEl = document.getElementById('debug-log-overlay');
+    if (!debugEl) {
+        debugEl = document.createElement('div');
+        debugEl.id = 'debug-log-overlay';
+        debugEl.style.cssText = 'position:fixed; bottom:0; left:0; width:100%; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; font-size:10px; padding:5px; pointer-events:none; z-index:9999; max-height:100px; overflow:hidden;';
+        document.body.appendChild(debugEl);
+    }
+    debugEl.textContent = msg + " | " + debugEl.textContent;
 }
 
 function updateSyncStatus(isConnected) {
