@@ -312,6 +312,14 @@ function initDataSync() {
 
             // Real-time listener
             db.collection('transactions').onSnapshot((snapshot) => {
+                console.log("Snapshot received!", snapshot.size); // DEBUG
+                // Only alert on first load to confirm connection
+                if (!document.body.dataset.syncConfirmed) {
+                    console.log("Sync connected");
+                    document.body.dataset.syncConfirmed = "true";
+                    // Optional: Visual indicator could go here
+                }
+
                 transactions = [];
                 snapshot.forEach((doc) => {
                     transactions.push(doc.data());
@@ -326,11 +334,17 @@ function initDataSync() {
                 if (document.getElementById('view-calendar').classList.contains('active')) {
                     renderCalendar();
                 }
+            }, (error) => {
+                console.error("Sync Error:", error);
+                alert("データの同期に失敗しました: " + error.message);
             });
             return; // Exit, don't load local
         } catch (e) {
             console.error("Firebase init failed:", e);
+            alert("Firebase初期化エラー: " + e.message);
         }
+    } else {
+        console.log("Firebase config missing or default");
     }
 
     // Fallback
